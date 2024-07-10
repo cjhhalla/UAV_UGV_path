@@ -22,6 +22,7 @@
     $ export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)
     $ export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/sitl_gazebo
     $ roslaunch px4 mavros_posix_sitl.launch
+    # more detail in https://github.com/engcang/mavros-gazebo-application.git
 ~~~
 + Run code
 ~~~shell
@@ -30,3 +31,12 @@
      $ source /opt/ros/<distro>/setup.bash
      $ python rect.py # circle.py # figure8.py
 ~~~
++ Jackal sim and requirements
+~~~shell
+    $ sudo apt-get install ros-<distro>-jackal-simulator ros-<distro>-jackal-desktop ros-<distro>-jackal-navigation
+    $ source /opt/ros/<distro>/setup.bash
+    $ roslaunch jackal_gazebo jackal_world.launch
+    # git clone <this-repo>
+    $ cd jackal
+    $ python rect.py # circle.py # figure8.py
+
