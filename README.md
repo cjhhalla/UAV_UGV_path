@@ -14,4 +14,19 @@
     $ git submodule update --init --recursive
     
     $ source ~/PX4-Autopilot/Tools/setup/ubuntu.sh --no-sim-tools --no-nuttx
+    $ cd ~/PX4-Autopilot
+    $ sudo apt install libgstreamer-plugins-base1.0-dev ros-<distro>-gazebo-plugins
+    $ DONT_RUN=1 make px4_sitl_default gazebo
+
+    $ source Tools/setup_gazebo.bash $(pwd) $(pwd)/build/px4_sitl_default
+    $ export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)
+    $ export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/sitl_gazebo
+    $ roslaunch px4 mavros_posix_sitl.launch
+~~~
++ Run code
+~~~shell
+     $ git clone <this-repo>
+     $ cd uav
+     $ source /opt/ros/<distro>/setup.bash
+     $ python rect.py
 ~~~
