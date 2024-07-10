@@ -28,5 +28,5 @@
      $ git clone <this-repo>
      $ cd uav
      $ source /opt/ros/<distro>/setup.bash
-     $ python rect.py
+     $ python rect.py # circle.py # figure8.py
 ~~~
