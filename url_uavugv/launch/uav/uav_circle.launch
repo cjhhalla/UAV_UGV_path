@@ -1,0 +1,11 @@
+<launch>
+  <node name="px4_controller" pkg="url_uavugv" type="circle_uav.py" output="screen">
+    <param name="robot" type="str" value="" />
+    <param name="radius" type="double" value="4.0" />
+    <param name="angular_speed" type="double" value="2.0" />
+    <param name="target_altitude" type="double" value="4.0" />
+    <param name="max_speed" type="double" value="3.0" />
+    <param name="working_time" type="double" value="11.0" />
+    <param name="use_gps" type="bool" value="False" />
+  </node>
+</launch>
