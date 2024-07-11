@@ -26,17 +26,25 @@
 ~~~
 + Run code
 ~~~shell
+     # roslaunch px4 mavros_posix_sitl.launch
+     $ mkdir -p ~/catkin_ws/src
+     $ cd ~/catkin_ws/src
      $ git clone <this-repo>
-     $ cd uav
-     $ source /opt/ros/<distro>/setup.bash
-     $ python rect.py # circle.py # figure8.py
+     $ cd ~/catkin_ws
+     $ catkin build url_uavugv
+     $ source ~/catkin_ws/devel/setup.bash
+     $ roslaunch url_uavugv uav_circle.launch # uav_rect.launch # uav_figure8.launch
 ~~~
 + Jackal sim and requirements
 ~~~shell
     $ sudo apt-get install ros-<distro>-jackal-simulator ros-<distro>-jackal-desktop ros-<distro>-jackal-navigation
     $ source /opt/ros/<distro>/setup.bash
     $ roslaunch jackal_gazebo jackal_world.launch
-    # git clone <this-repo>
-    $ cd jackal
-    $ python rect.py # circle.py # figure8.py
+    $ mkdir -p ~/catkin_ws/src
+    $ cd ~/catkin_ws/src
+    $ git clone <this-repo>
+    $ cd ~/catkin_ws
+    $ catkin build url_uavugv
+    $ source ~/catkin_ws/devel/setup.bash
+    $ roslaunch url_uavugv ugv_circle.launch # ugv_rect.launch # ugv_figure8.launch
 
