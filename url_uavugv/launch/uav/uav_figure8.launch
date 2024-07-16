@@ -1,10 +1,13 @@
 <launch>
   <node name="px4_controller" pkg="url_uavugv" type="figure8_uav.py" output="screen">
-    <param name="robot" type="str" value="/UAV1" />
+    <param name="robot" type="str" value="" />
     <param name="target_altitude" type="double" value="3.0" />
     <param name="rate" type="int" value="50" />
     <param name="radius" type="int" value="5" />
-    <param name="cycle" type="int" value="20" />
-    <param name="use_gps" type="bool" value="False" />
+    <!-- radius * 8 = cycle / appropriate speed-->
+    <param name="cycle" type="int" value="40" />
+    <param name="laps_completed" type="int" value="1" />
+    <param name="use_gps" type="bool" value="True" />
+    <param name="yaw_control" type="bool" value="False" />
   </node>
 </launch>

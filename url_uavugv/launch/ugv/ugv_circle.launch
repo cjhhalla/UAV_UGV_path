@@ -1,12 +1,12 @@
 <launch>
   <node name="jackal_controller" pkg="url_uavugv" type="circle_ugv.py" output="screen">
-    <param name="robot" type="str" value="/UGV1" />
+    <param name="robot" type="str" value="" />
     <param name="radius" type="double" value="10.0" />
-    <param name="max_speed" type="double" value="5.0" />
+    <param name="max_speed" type="double" value="0.5" />
     <param name="look_ahead" type="double" value="1.2" />
-    <param name="laps_completed" type="int" value="5" />
-    <param name="center_x" type="int" value="5" />
-    <param name="center_y" type="int" value="5" />
+    <param name="laps_completed" type="int" value="1" />
+    <param name="center_x" type="int" value="0" />
+    <param name="center_y" type="int" value="0" />
     <param name="use_gps" type="bool" value="False" />
   </node>
 </launch>

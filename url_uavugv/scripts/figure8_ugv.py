@@ -43,7 +43,7 @@ class Jackal:
         rospy.loginfo("center_x2: {}".format(self.center_x2))
 
         self.cmd_vel_pub = rospy.Publisher('/jackal_velocity_controller/cmd_vel', Twist, queue_size=10)
-        self.pose_sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self.pose_callback)
+        self.pose_sub = rospy.Subscriber('/jackal_velocity_controller/odom', Odometry, self.pose_callback)
 
         # if not self.use_gps:
         #     self.pose_sub = rospy.Subscriber(self.robot_id + '/mavros/local_position/odom', Odometry, self.pose_callback)
@@ -58,15 +58,32 @@ class Jackal:
 
         self.prev_error = 0
         self.yaw = 0
+        self.initial_yaw = False
+        self.yaw_list = []
+        self.init_yaw = 0
         self.model_name = 'jackal'
 
+    # def pose_callback(self, msg):
+    #     index = msg.name.index(self.model_name)
+    #     pose_ = msg.pose[index]
+    #     self.pose.pose.pose.position = pose_.position
+    #     orientation_q = pose_.orientation
+    #     euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
+    #     self.yaw = euler[2]
+
     def pose_callback(self, msg):
-        index = msg.name.index(self.model_name)
-        pose_ = msg.pose[index]
-        self.pose.pose.pose.position = pose_.position
-        orientation_q = pose_.orientation
+        #index = msg.name.index(self.model_name)
+        #pose_ = msg.pose[index]
+        self.pose   = msg
+        orientation_q = self.pose.pose.pose.orientation
         euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
         self.yaw = euler[2]
+        if not self.initial_yaw:
+            self.yaw_list.append(self.yaw)
+            if len(self.yaw_list) > 100 :
+                self.init_yaw = np.mean(self.yaw_list)
+                rospy.loginfo("initial yaw: {}".format(self.init_yaw))
+                self.initial_yaw = True
 
     def move_x(self, goal):
         goal_ = goal.pose.position
@@ -108,6 +125,13 @@ class Jackal:
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
 
+    def rotate_goal(self, goal_x, goal_y):
+        cos_yaw = np.cos(self.init_yaw)
+        sin_yaw = np.sin(self.init_yaw)
+        rotated_x = goal_x * cos_yaw - goal_y * sin_yaw
+        rotated_y = goal_x * sin_yaw + goal_y * cos_yaw
+        return rotated_x, rotated_y
+
 if __name__ == '__main__':
     jackal = Jackal()
     goal = PoseStamped()
@@ -116,8 +140,10 @@ if __name__ == '__main__':
 
     radius = jackal.radius
     num_waypoints = 36  
-    center1 = (jackal.center_x1, 0)
-    center2 = (jackal.center_x2, 0)
+    center1_x , center1_y = jackal.rotate_goal(jackal.center_x1,0)
+    center2_x , center2_y = jackal.rotate_goal(jackal.center_x2,0)
+    center1 = (center1_x, center1_y)
+    center2 = (center2_x, center2_y)
 
     waypoints_circle1 = [
         (
@@ -127,6 +153,8 @@ if __name__ == '__main__':
         for i in range(num_waypoints)
     ]
 
+    wp1 = [jackal.rotate_goal(x,y) for x,y in waypoints_circle1]
+
     waypoints_circle2 = [
         (
             center2[0] + radius * cos(-2 * pi * i / num_waypoints),
@@ -135,7 +163,9 @@ if __name__ == '__main__':
         for i in range(num_waypoints)
     ]
 
-    waypoints = waypoints_circle1 + waypoints_circle2
+    wp2 = [jackal.rotate_goal(x,y) for x,y in waypoints_circle2]
+
+    waypoints = wp1 + wp2
 
     set_goal = 0
     look_ahead_distance = jackal.look_ahead
@@ -154,7 +184,7 @@ if __name__ == '__main__':
                     for _ in range (2000):
 			jackal.pure_pursuit_control(goal, look_ahead_distance)
 			jackal.rate.sleep()
-			if dist(goal, jackal.pose) < 1:
+			if dist(goal, jackal.pose) < look_ahead_distance:
                     		rospy.loginfo("Completed 2 laps. Stopping.")
                     		break
 		    break

@@ -5,6 +5,7 @@ import math
 import rospy
 import roslib
 import mavros
+import numpy as np
 
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
@@ -14,6 +15,8 @@ from mavros_msgs.srv import SetMode, CommandBool
 
 import sys
 import signal
+
+import tf.transformations as transformations
 
 class px4():
     def __init__(self):
@@ -51,12 +54,25 @@ class px4():
         self.vel_ = self.vel.twist.linear
         self.ang_ = self.vel.twist.angular
         self.rate = rospy.Rate(25)
+        self.yaw = 0
+        self.initial_yaw = False
+        self.yaw_list = []
+        self.init_yaw = 0
 
     def state_callback(self, msg):
         self.current_state = msg
 
     def position_callback(self, msg):
         self.pose = msg
+        orientation_q = self.pose.pose.pose.orientation
+        euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
+        self.yaw = euler[2]
+        if not self.initial_yaw:
+            self.yaw_list.append(self.yaw)
+            if len(self.yaw_list) > 100 :
+                self.init_yaw = np.mean(self.yaw_list)
+                rospy.loginfo("initial yaw: {}".format(self.init_yaw))
+                self.initial_yaw = True
 
     def set_goal(self, goal):
         goal_ = goal.pose.position
@@ -72,6 +88,13 @@ class px4():
 
     def clip_velocity(self, velocity, max_speed= 1):
         return max(min(velocity, self.max_speed), -self.max_speed)
+
+    def rotate_goal(self, goal_x, goal_y):
+        cos_yaw = np.cos(self.init_yaw)
+        sin_yaw = np.sin(self.init_yaw)
+        rotated_x = goal_x * cos_yaw - goal_y * sin_yaw
+        rotated_y = goal_x * sin_yaw + goal_y * cos_yaw
+        return rotated_x, rotated_y
 
 def dist(goal, odom_pose):
     now = odom_pose.pose.pose.position
@@ -135,23 +158,27 @@ if __name__ == '__main__':
 
             if dist(goal, px4.pose) < 0.3:
                 if set_goal == 0:
-                    goal_.x = length
-                    goal_.y = 0
+                    goal_x, goal_y = px4.rotate_goal(length, 0)
+                    goal_.x = goal_x
+                    goal_.y = goal_y
                     goal_.z = target_z
                     set_goal = 1
                 elif set_goal == 1:
-                    goal_.x = length
-                    goal_.y = length
+                    goal_x, goal_y = px4.rotate_goal(length, length)
+                    goal_.x = goal_x
+                    goal_.y = goal_y
                     goal_.z = target_z
                     set_goal = 2
                 elif set_goal == 2:
-                    goal_.x = 0
-                    goal_.y = length
+                    goal_x, goal_y = px4.rotate_goal(0, length)
+                    goal_.x = goal_x
+                    goal_.y = goal_y
                     goal_.z = target_z
                     set_goal = 3
                 elif set_goal == 3:
-                    goal_.x = 0
-                    goal_.y = 0
+                    goal_x, goal_y = px4.rotate_goal(0, 0)
+                    goal_.x = goal_x
+                    goal_.y = goal_y
                     goal_.z = target_z
                     set_goal = 0
                     laps_completed += 1

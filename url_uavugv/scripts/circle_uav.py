@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-
 import time
 from math import sqrt, pow, sin, cos
 import rospy
 import mavros
+import numpy as np
 
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
@@ -11,10 +11,10 @@ from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool
 from geographic_msgs.msg import GeoPoseStamped
 
-
-
 import sys
 import signal
+
+import tf.transformations as transformations
 
 class PX4:
     def __init__(self):
@@ -37,6 +37,7 @@ class PX4:
         rospy.loginfo("working_time: {}".format(self.working_time))
         rospy.loginfo("use_gps: {}".format(self.use_gps))
 
+
         if not self.use_gps:
             self.local_pos_pub = rospy.Publisher(self.robot_id + '/mavros/setpoint_position/local', PoseStamped, queue_size=10)
             self.position_sub = rospy.Subscriber(self.robot_id + '/mavros/local_position/odom', Odometry, self.position_callback)
@@ -53,12 +54,26 @@ class PX4:
         self.pose = Odometry()
         self.vel = TwistStamped()
         self.rate = rospy.Rate(25)
+        self.yaw = 0
+        self.initial_yaw = False
+        self.yaw_list = []
+        self.init_yaw = 0
+
 
     def state_callback(self, msg):
         self.current_state = msg
 
     def position_callback(self, msg):
         self.pose = msg
+        orientation_q = self.pose.pose.pose.orientation
+        euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
+        self.yaw = euler[2]
+        if not self.initial_yaw:
+            self.yaw_list.append(self.yaw)
+            if len(self.yaw_list) > 100 :
+                self.init_yaw = np.mean(self.yaw_list)
+                rospy.loginfo("initial yaw: {}".format(self.init_yaw))
+                self.initial_yaw = True
 
     def set_goal(self, goal):
         self.local_pos_pub.publish(goal)
@@ -84,6 +99,13 @@ class PX4:
         self.local_vel_pub.publish(self.vel)
         self.rate.sleep()
         return angle
+
+    def rotate_goal(self, goal_x, goal_y):
+        cos_yaw = np.cos(self.init_yaw)
+        sin_yaw = np.sin(self.init_yaw)
+        rotated_x = goal_x * cos_yaw - goal_y * sin_yaw
+        rotated_y = goal_x * sin_yaw + goal_y * cos_yaw
+        return rotated_x, rotated_y
 
 def dist(goal, odom_pose):
     now = odom_pose.pose.pose.position
@@ -147,8 +169,9 @@ def main():
 
             if dist(goal, px4.pose) < 0.3:
                 if set_goal == 0:
-                    goal.pose.position.x = radius
-                    goal.pose.position.y = 0
+                    goal_x, goal_y = px4.rotate_goal(radius, 0)
+                    goal.pose.position.x = goal_x
+                    goal.pose.position.y = goal_y
                     goal.pose.position.z = target_z
                     set_goal = 1
                 elif set_goal == 1:

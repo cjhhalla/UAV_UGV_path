@@ -3,8 +3,6 @@ import time
 from math import sqrt, pow
 import math
 import rospy
-import roslib
-import mavros
 import numpy as np
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
@@ -14,34 +12,39 @@ from mavros_msgs.msg import PositionTarget
 
 import sys
 import signal
+import tf
 
-def signal_handler(signal, frame): # ctrl + c -> exit program
+def signal_handler(signal, frame):
     print('You pressed Ctrl+C!')
     sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-
 def dist(goal, odom_pose):
     now = odom_pose.pose.pose.position
-    return sqrt(pow(now.x-goal, 2) + pow(now.y-goal, 2) + pow(now.z-goal, 2))
+    return sqrt(pow(now.x - goal.x, 2) + pow(now.y - goal.y, 2) + pow(now.z - goal.z, 2))
 
 class robot:
     def __init__(self, FLIGHT_ALTITUDE, RATE, RADIUS, CYCLE_S, REF_FRAME, USE_GPS):
         rospy.init_node('robot_controller', anonymous=True)
         
-        self.alt_param = rospy.get_param('~target_altitude',3.0)
-        self.rate_param = rospy.get_param('~rate',50)
-        self.radius_param = rospy.get_param('~radius',10)
-        self.cycle_param = rospy.get_param('~cycle',100)
-        self.use_gps = rospy.get_param('~use_gps',False)
-        self.robot_id = rospy.get_param('~robot','')
+        self.alt_param = rospy.get_param('~target_altitude', 3.0)
+        self.rate_param = rospy.get_param('~rate', 50)
+        self.radius_param = rospy.get_param('~radius', 10)
+        self.cycle_param = rospy.get_param('~cycle', 100)
+        self.use_gps = rospy.get_param('~use_gps', False)
+        self.robot_id = rospy.get_param('~robot', '')
+        self.yaw_control = rospy.get_param('~yaw_control', True)
+        self.laps_completed = rospy.get_param('~laps_completed',1)
+
 
         rospy.loginfo("robot_id: {}".format(self.robot_id))
         rospy.loginfo("radius: {}".format(self.radius_param))
-        rospy.loginfo("target_altitude: {}".format(self.target_altitude))
+        rospy.loginfo("target_altitude: {}".format(self.alt_param))
         rospy.loginfo("rate: {}".format(self.rate_param))
         rospy.loginfo("cycle: {}".format(self.cycle_param))
         rospy.loginfo("use_gps: {}".format(self.use_gps))
+        rospy.loginfo("yaw_control: {}".format(self.yaw_control))
+        rospy.loginfo("laps_completed: {}".format(self.laps_completed))
 
         if not self.use_gps:
             self.local_pos_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
@@ -51,19 +54,18 @@ class robot:
             self.position_sub = rospy.Subscriber('/mavros/global_position/local', Odometry, self.position_callback)
 
         self.local_vel_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
-        self.state_sub = rospy.Subscriber('/mavros/state', State, self.state_callback) 
+        self.state_sub = rospy.Subscriber('/mavros/state', State, self.state_callback)
         self.arming = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
         self.offboarding = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self.landing = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self.publisher = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
 
-
-        self.FLIGHT_ALTITUDE = self.alt_param           # Flight altitude
-        self.RATE = self.rate_param                                # Loop rate hz
-        self.RADIUS = self.radius_param                            # Radius of figure 8 in meters
-        self.CYCLE_S = self.cycle_param                          # Time to complete one figure 8 cycle in seconds
+        self.FLIGHT_ALTITUDE = self.alt_param
+        self.RATE = self.rate_param
+        self.RADIUS = self.radius_param
+        self.CYCLE_S = self.cycle_param
         self.STEPS = int(self.CYCLE_S * self.RATE)
-        self.FRAME = REF_FRAME                          # Reference frame
+        self.FRAME = REF_FRAME
         self.current_state = State()
         self.pose = Odometry()
         self.vel = TwistStamped()
@@ -73,6 +75,9 @@ class robot:
         self.target_z = 4
         self.off_check = 0
         self.arm_check = 0
+        self.init_yaw = 0
+        self.initial_yaw = False
+        self.yaw_list = []
 
     def state_callback(self, msg):
         self.current_state = msg
@@ -80,6 +85,15 @@ class robot:
     def position_callback(self, msg):
         self.pose = msg
         self.pose_ = self.pose.pose.pose.position
+        orientation_q = self.pose.pose.pose.orientation
+        euler = tf.transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
+        self.yaw = euler[2]
+        if not self.initial_yaw:
+            self.yaw_list.append(self.yaw)
+            if len(self.yaw_list) > 100:
+                self.init_yaw = np.mean(self.yaw_list)
+                rospy.loginfo("initial yaw: {}".format(self.init_yaw))
+                self.initial_yaw = True
 
     def vel_goal(self, goal):
         goal_ = goal.pose.position
@@ -128,12 +142,19 @@ class robot:
             self.vel_goal(goal)
             self.rate.sleep()
 
+    def rotate_goal(self, x, y, yaw):
+        cos_yaw = np.cos(yaw)
+        sin_yaw = np.sin(yaw)
+        x_new = cos_yaw * x - sin_yaw * y
+        y_new = sin_yaw * x + cos_yaw * y
+        return x_new, y_new
+
     def main(self):
-        i = 0                        # Set the counter
-        dt = 1.0 / self.RATE         # Set the sample time step
-        dadt = math.pi * 2 / self.CYCLE_S # First derivative of angle with respect to time
-        r = self.RADIUS              # Set the radius of the figure-8
-        path = []	
+        i = 0
+        dt = 1.0 / self.RATE
+        dadt = math.pi * 2 / self.CYCLE_S
+        r = self.RADIUS
+        path = []
 
         rospy.sleep(2)
         self.takeoff_wait()
@@ -167,8 +188,8 @@ class robot:
             s = math.sin(a)
             cc = c * c
             ss = s * s
-            sspo = (s * s) + 1.0 # sin squared plus one
-            ssmo = (s * s) - 1.0 # sin squared minus one
+            sspo = (s * s) + 1.0
+            ssmo = (s * s) - 1.0
             sspos = sspo * sspo
 
             posx[i] = -(r * c * s) / sspo
@@ -205,55 +226,46 @@ class robot:
             if k >= len(posx):
                 k = 0
                 laps_completed += 1
-            if laps_completed >= 2:
+            if laps_completed >= self.laps_completed:
                 goal = PoseStamped()
                 goal_ = goal.pose.position
                 goal_.x = 0
                 goal_.y = 0
                 goal_.z = self.FLIGHT_ALTITUDE
-                for _ in range (100):
-                   self.vel_goal(goal)									
+                for _ in range(100):
+                    self.vel_goal(goal)
                 self.landing(base_mode=0, custom_mode="AUTO.LAND")
                 rospy.loginfo("Landing!")
                 break
-            target.header.frame_id = self.FRAME  # Define the frame that will be used
-            target.coordinate_frame = 1 # MAV_FRAME_LOCAL_NED = 1
-            target.type_mask = 0  # Use everything!
-            # PositionTarget::IGNORE_VX +
-            # PositionTarget::IGNORE_VY +
-            # PositionTarget::IGNORE_VZ +
-            # PositionTarget::IGNORE_AFX +
-            # PositionTarget::IGNORE_AFY +
-            # PositionTarget::IGNORE_AFZ +
-            # PositionTarget::IGNORE_YAW;
 
-            # Gather position for publishing
-            target.position.x = posx[k]
-            target.position.y = posy[k]
+            rotated_x, rotated_y = self.rotate_goal(posx[k], posy[k], self.init_yaw)
+            target.header.frame_id = self.FRAME
+            target.coordinate_frame = 1
+            target.type_mask = 0
+
+            target.position.x = rotated_x
+            target.position.y = rotated_y
             target.position.z = posz[k]
 			
-            # Gather velocity for publishing
             target.velocity.x = velx[k]
             target.velocity.y = vely[k]
             target.velocity.z = velz[k]
 			
-            # Gather acceleration for publishing
             target.acceleration_or_force.x = afx[k]
             target.acceleration_or_force.y = afy[k]
             target.acceleration_or_force.z = afz[k]
 			
-            # Gather yaw for publishing
-            target.yaw = yawc[k]
-			
-            # Gather yaw rate for publishing
-            target.yaw_rate = yaw_ratec[k]
-			
-            # Publish to the setpoint topic
+            if self.yaw_control:
+                target.yaw = yawc[k]
+                target.yaw_rate = yaw_ratec[k]
+            else:
+                target.yaw = 0
+                target.yaw_rate = 0
+            
             self.publisher.publish(target)
 			
             k = k + 1
             rr.sleep()
-
 
 if __name__ == '__main__':
     try:
@@ -261,4 +273,3 @@ if __name__ == '__main__':
         q.main()
     except rospy.ROSInterruptException:
         pass
-
