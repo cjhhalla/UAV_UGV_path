@@ -47,6 +47,6 @@
     $ catkin build url_uavugv
     $ source ~/catkin_ws/devel/setup.bash
     $ roslaunch url_uavugv ugv_circle.launch # ugv_rect.launch # ugv_figure8.launch
-
+~~~
 ## Update
 + 2024/07/24 - waypoint following node, fail_safe stop node added
