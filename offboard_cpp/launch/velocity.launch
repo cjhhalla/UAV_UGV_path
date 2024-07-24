@@ -1,0 +1,5 @@
+<launch>
+  <node type="velocity_test" pkg="offboard_example" name="velocity_test" output="screen">
+    <param name="target_z" value="1.0"/>
+  </node>
+</launch>

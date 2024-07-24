@@ -1,0 +1,6 @@
+<launch>
+  <node type="offboard_example_node" pkg="offboard_example" name="offboard_example_node" output="screen">
+  	<param name="verbal_flag" type="bool" value="false" />
+    <rosparam file="$(find offboard_example)/yaml/updown.yaml" command="load" />
+  </node>
+</launch>

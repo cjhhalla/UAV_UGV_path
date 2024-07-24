@@ -1,0 +1,5 @@
+<launch>
+  <node type="yaw_node" pkg="offboard_example" name="yaw_node" output="screen">
+    <param name="target_z" value="1.0"/>
+  </node>
+</launch>
