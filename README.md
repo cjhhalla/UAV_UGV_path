@@ -49,4 +49,4 @@
     $ roslaunch url_uavugv ugv_circle.launch # ugv_rect.launch # ugv_figure8.launch
 ~~~
 ## Update
-+ 2024/07/24 - waypoint following node, fail_safe stop node added
++ 2024/07/24 - waypoint following node, fail_safe stop node, offboard_cpp node added
