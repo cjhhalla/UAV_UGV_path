@@ -8,6 +8,6 @@
     <param name="cycle" type="int" value="40" />
     <param name="laps_completed" type="int" value="1" />
     <param name="use_gps" type="bool" value="True" />
-    <param name="yaw_control" type="bool" value="False" />
+    <param name="yaw_control" type="bool" value="True" />
   </node>
 </launch>

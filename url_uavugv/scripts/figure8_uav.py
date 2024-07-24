@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool
 from mavros_msgs.msg import PositionTarget
-
+from std_msgs.msg import Bool
 import sys
 import signal
 import tf
@@ -59,6 +59,7 @@ class robot:
         self.offboarding = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self.landing = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self.publisher = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+        self.flag_sub = rospy.Subscriber(self.robot_id + '/is_safe', Bool, self.flag_callback)
 
         self.FLIGHT_ALTITUDE = self.alt_param
         self.RATE = self.rate_param
@@ -78,6 +79,13 @@ class robot:
         self.init_yaw = 0
         self.initial_yaw = False
         self.yaw_list = []
+        self.fail_safe = True
+
+    def flag_callback(self, msg):
+        if msg.data == True:
+            self.fail_safe = True
+        elif msg.data == False:
+            self.fail_safe = False
 
     def state_callback(self, msg):
         self.current_state = msg
@@ -223,6 +231,17 @@ class robot:
         laps_completed = 0
 
         while not rospy.is_shutdown():
+################## FAIL SAFE #############################
+            if not self.fail_safe:
+                goal = PoseStamped()
+                goal_ = goal.pose.position
+                goal_.x = self.pose.pose.pose.position.x
+                goal_.y = self.pose.pose.pose.position.y
+                goal_.z = self.FLIGHT_ALTITUDE
+                self.vel_goal(goal)
+                continue
+################## FAIL SAFE #############################
+
             if k >= len(posx):
                 k = 0
                 laps_completed += 1

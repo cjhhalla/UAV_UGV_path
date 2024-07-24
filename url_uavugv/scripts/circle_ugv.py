@@ -46,12 +46,13 @@ class Jackal:
         # self.cmd_vel_pub = rospy.Publisher('/jackal_velocity_controller/cmd_vel', Twist, queue_size=10)
         # self.pose_sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self.pose_callback)
         self.cmd_vel_pub = rospy.Publisher(self.robot_id + '/jackal_velocity_controller/cmd_vel', Twist, queue_size=10)
-        self.pose_sub = rospy.Subscriber(self.robot_id + '/jackal_velocity_controller/odom', Odometry, self.pose_callback)
-
-        # if not self.use_gps:
-        #     self.pose_sub = rospy.Subscriber(self.robot_id + '/mavros/local_position/odom', Odometry, self.pose_callback)
-        # else:
-        #     self.position_sub = rospy.Subscriber(self.robot_id + '/mavros/global_position/local', Odometry, self.pose_callback)
+        # self.pose_sub = rospy.Subscriber(self.robot_id + '/jackal_velocity_controller/odom', Odometry, self.pose_callback)
+        # self.pose_sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self.pose_callback)
+        self.flag_sub = rospy.Subscriber(self.robot_id + '/is_safe', Bool, self.flag_callback)
+        if not self.use_gps:
+            self.pose_sub = rospy.Subscriber(self.robot_id + '/mavros/local_position/odom', Odometry, self.pose_callback)
+        else:
+            self.position_sub = rospy.Subscriber(self.robot_id + '/mavros/global_position/local', Odometry, self.pose_callback)
 
         self.pose = Odometry()
         self.rate = rospy.Rate(100)
@@ -65,6 +66,13 @@ class Jackal:
         self.yaw_list = []
         self.init_yaw = 0
         self.model_name = 'jackal'
+        self.fail_safe = True
+
+    def flag_callback(self, msg):
+        if msg.data == True:
+            self.fail_safe = True
+        elif msg.data == False:
+            self.fail_safe = False
 
     # def pose_callback(self, msg):
     #     index = msg.name.index(self.model_name)
@@ -73,9 +81,8 @@ class Jackal:
     #     orientation_q = pose_.orientation
     #     euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
     #     self.yaw = euler[2]
+        
     def pose_callback(self, msg):
-        #index = msg.name.index(self.model_name)
-        #pose_ = msg.pose[index]
         self.pose   = msg
         orientation_q = self.pose.pose.pose.orientation
         euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
@@ -158,6 +165,13 @@ if __name__ == '__main__':
 
     try:
         while not rospy.is_shutdown():
+            
+            if not jackal.fail_safe:
+                goal.pose.position.x = jackal.pose.pose.pose.position.x
+                goal.pose.position.y = jackal.pose.pose.pose.position.y
+                jackal.pure_pursuit_control(goal, look_ahead_distance) 
+                continue
+
             if dist(goal, jackal.pose) < look_ahead_distance:
                 goal.pose.position.x, goal.pose.position.y = waypoints[set_goal]
                 set_goal = (set_goal + 1) % len(waypoints)

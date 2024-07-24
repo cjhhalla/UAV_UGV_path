@@ -1,7 +1,7 @@
 <launch>
   <node name="jackal_controller" pkg="url_uavugv" type="circle_ugv.py" output="screen">
     <param name="robot" type="str" value="" />
-    <param name="radius" type="double" value="10.0" />
+    <param name="radius" type="double" value="4.0" />
     <param name="max_speed" type="double" value="0.5" />
     <param name="look_ahead" type="double" value="1.2" />
     <param name="laps_completed" type="int" value="1" />

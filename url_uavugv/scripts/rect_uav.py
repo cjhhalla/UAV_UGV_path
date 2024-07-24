@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import time
-from math import sqrt, pow
+from math import sqrt, pow, atan2
 import math
 import rospy
 import roslib
@@ -10,8 +10,9 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State
-
+from std_msgs.msg import Bool
 from mavros_msgs.srv import SetMode, CommandBool
+from mavros_msgs.msg import PositionTarget
 
 import sys
 import signal
@@ -48,6 +49,9 @@ class px4():
         self.arming = rospy.ServiceProxy(self.robot_id + '/mavros/cmd/arming', CommandBool)
         self.offboarding = rospy.ServiceProxy(self.robot_id + '/mavros/set_mode', SetMode)
         self.landing = rospy.ServiceProxy(self.robot_id + '/mavros/set_mode', SetMode)
+        self.flag_sub = rospy.Subscriber(self.robot_id + '/is_safe', Bool, self.flag_callback)
+        self.publisher = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+
         self.current_state = State()
         self.pose = Odometry()
         self.vel = TwistStamped()
@@ -58,6 +62,13 @@ class px4():
         self.initial_yaw = False
         self.yaw_list = []
         self.init_yaw = 0
+        self.fail_safe = True
+
+    def flag_callback(self, msg):
+        if msg.data == True:
+            self.fail_safe = True
+        elif msg.data == False:
+            self.fail_safe = False
 
     def state_callback(self, msg):
         self.current_state = msg
@@ -84,6 +95,17 @@ class px4():
         self.vel.twist.linear.y = self.clip_velocity(0.5 * (goal_pos.y - self.pose.pose.pose.position.y))
         self.vel.twist.linear.z = self.clip_velocity(0.5 * (goal_pos.z - self.pose.pose.pose.position.z))
         self.vel.header.stamp = rospy.Time.now()
+        delta_x = goal_pos.x - self.pose.pose.pose.position.x
+        delta_y = goal_pos.y - self.pose.pose.pose.position.y
+        if np.abs(self.pose.pose.pose.position.z - self.target_altitude) < 0.2: 
+            target_yaw = atan2(delta_y,delta_x)
+            if (target_yaw - self.yaw) < -math.pi:
+                target_yaw = target_yaw + math.pi * 2
+            if (target_yaw - self.yaw) > math.pi:
+                target_yaw = target_yaw - math.pi * 2
+            self.vel.twist.angular.z = self.clip_velocity((target_yaw - self.yaw))
+        # if np.abs(self.yaw - target_yaw) < 0.1:
+        #     self.vel.twist.angular.z = target_yaw
         self.local_vel_pub.publish(self.vel)
 
     def clip_velocity(self, velocity, max_speed= 1):
@@ -155,6 +177,16 @@ if __name__ == '__main__':
             elif px4.current_state.armed and arm_check == 0:
                 rospy.loginfo("Vehicle armed : %s" % px4.current_state.armed)
                 arm_check = 1
+
+
+################## FAIL SAFE #############################
+            if not px4.fail_safe:
+                goal_.x = px4.pose.pose.pose.position.x
+                goal_.y = px4.pose.pose.pose.position.y
+                goal_.z = target_z
+                px4.vel_goal(goal)
+                continue
+################## FAIL SAFE #############################
 
             if dist(goal, px4.pose) < 0.3:
                 if set_goal == 0:

@@ -45,3 +45,8 @@ catkin_install_python(PROGRAMS
   scripts/figure8_ugv.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_install_python(PROGRAMS
+  scripts/waypoint_following.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

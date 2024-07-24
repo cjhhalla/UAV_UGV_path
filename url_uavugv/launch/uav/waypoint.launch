@@ -1,5 +1,6 @@
 <launch>
-  <node name="px4_controller" pkg="url_uavugv" type="rect_uav.py" output="screen">
+  <rosparam file="$(find url_uavugv)/yaml/waypoint.yaml" command="load"/> 
+  <node name="px4_controller" pkg="url_uavugv" type="waypoint_following.py" output="screen"> 
     <param name="robot" type="str" value="" />
     <param name="length" type="double" value="3.0" />
     <param name="target_altitude" type="double" value="3.0" />

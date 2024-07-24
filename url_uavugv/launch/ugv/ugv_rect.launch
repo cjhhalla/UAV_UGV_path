@@ -2,8 +2,8 @@
   <node name="jackal_controller" pkg="url_uavugv" type="rect_ugv.py" output="screen">
     <param name="robot" type="str" value="" />
     <param name="length" type="double" value="5.0" />
-    <param name="max_speed" type="double" value="0.5" />
-    <param name="look_ahead" type="double" value="1.2" />
+    <param name="max_speed" type="double" value="1" />
+    <param name="look_ahead" type="double" value="0.8" />
     <param name="laps_completed" type="int" value="1" />
     <param name="use_gps" type="bool" value="False" />
   </node>

@@ -2,7 +2,7 @@
   <node name="px4_controller" pkg="url_uavugv" type="circle_uav.py" output="screen">
     <param name="robot" type="str" value="" />
     <param name="radius" type="double" value="2.0" />
-    <param name="angular_speed" type="double" value="0.1" />
+    <param name="angular_speed" type="double" value="1" />
     <param name="target_altitude" type="double" value="5.0" />
     <param name="max_speed" type="double" value="0.5" />
     <param name="working_time" type="double" value="60.0" />

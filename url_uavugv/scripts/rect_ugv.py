@@ -3,6 +3,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from math import sqrt, atan2, sin
+from std_msgs.msg import Bool
 import sys
 import signal
 import numpy as np
@@ -39,12 +40,13 @@ class Jackal:
         rospy.loginfo("look_ahead_distance: {}".format(self.look_ahead))
 
         self.cmd_vel_pub = rospy.Publisher(self.robot_id + '/jackal_velocity_controller/cmd_vel', Twist, queue_size=10)
-        self.pose_sub = rospy.Subscriber(self.robot_id + '/jackal_velocity_controller/odom', Odometry, self.pose_callback)
-
-        # if not self.use_gps:
-        #     self.pose_sub = rospy.Subscriber(self.robot_id + '/mavros/local_position/odom', Odometry, self.pose_callback)
-        # else:
-        #     self.position_sub = rospy.Subscriber(self.robot_id + '/mavros/global_position/local', Odometry, self.pose_callback)
+        # self.pose_sub = rospy.Subscriber(self.robot_id + '/jackal_velocity_controller/odom', Odometry, self.pose_callback)
+        # self.pose_sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self.pose_callback)
+        self.flag_sub = rospy.Subscriber(self.robot_id + '/is_safe', Bool, self.flag_callback)
+        if not self.use_gps:
+            self.pose_sub = rospy.Subscriber(self.robot_id + '/mavros/local_position/odom', Odometry, self.pose_callback)
+        else:
+            self.position_sub = rospy.Subscriber(self.robot_id + '/mavros/global_position/local', Odometry, self.pose_callback)
 
         self.pose = Odometry()
         self.rate = rospy.Rate(100)
@@ -60,12 +62,26 @@ class Jackal:
         self.initial_yaw = False
         self.yaw_list = []
         self.init_yaw = 0
+        self.fail_safe = True
 
+    def flag_callback(self, msg):
+        if msg.data == True:
+            self.fail_safe = True
+        elif msg.data == False:
+            self.fail_safe = False
+
+    # def pose_callback(self, msg):
+    #     index = msg.name.index(self.model_name)
+    #     pose_ = msg.pose[index]
+    #     self.pose.pose.pose.position = pose_.position
+    #     orientation_q = pose_.orientation
+    #     euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
+    #     self.yaw = euler[2]
 
     def pose_callback(self, msg):
         #index = msg.name.index(self.model_name)
         #pose_ = msg.pose[index]
-        self.pose   = msg
+        self.pose = msg
         orientation_q = self.pose.pose.pose.orientation
         euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
         self.yaw = euler[2]
@@ -101,7 +117,7 @@ class Jackal:
 
         cmd = Twist()
         cmd.linear.x = speed
-        cmd.angular.z = curvature 
+        cmd.angular.z = curvature * 0.5
         self.cmd_vel_pub.publish(cmd)
 
     def calculate_look_ahead_point(self, current_position, goal_position, look_ahead_distance):
@@ -144,7 +160,13 @@ if __name__ == '__main__':
     
     try:
         while not rospy.is_shutdown():
-            if dist(goal, jackal.pose) < look_ahead_distance:
+            if not jackal.fail_safe:
+                goal.pose.position.x = jackal.pose.pose.pose.position.x
+                goal.pose.position.y = jackal.pose.pose.pose.position.y
+                jackal.pure_pursuit_control(goal, look_ahead_distance) 
+                continue
+
+            if dist(goal, jackal.pose) <= look_ahead_distance:
                 goal.pose.position.x, goal.pose.position.y = waypoints[set_goal]
                 set_goal = (set_goal + 1) % len(waypoints)
                 if set_goal == 0:
@@ -153,13 +175,13 @@ if __name__ == '__main__':
                     #jackal.stop()
                     goal.pose.position.x=0
                     goal.pose.position.y=0
-                    for _ in range (2000):
+                    for _ in range (500):
                        jackal.pure_pursuit_control(goal, look_ahead_distance)
                        jackal.rate.sleep()
-                       if dist(goal, jackal.pose) < look_ahead_distance:
-                               rospy.loginfo("Completed laps. Stopping.")
-                               break
-                       break
+                    if dist(goal, jackal.pose) <= look_ahead_distance:
+                        rospy.loginfo("Completed laps. Stopping.")
+                        sys.exit(0)       
+                    break
             jackal.pure_pursuit_control(goal, look_ahead_distance)
             jackal.rate.sleep()
     except rospy.ROSInterruptException:
