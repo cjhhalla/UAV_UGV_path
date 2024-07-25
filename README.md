@@ -50,3 +50,4 @@
 ~~~
 ## Update
 + 2024/07/24 - waypoint following node, fail_safe stop node, offboard_cpp node added
++ 2024/07/25 - waypoint initialization method change (0,0,0) -> (current pose) / python -> c++ / visualization node added
