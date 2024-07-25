@@ -1,6 +1,7 @@
 <launch>
-  <node name="px4_controller" pkg="url_uavugv" type="circle_uav.py" output="screen">
-    <param name="robot" type="str" value="" />
+  <arg name= "robot" default ""/>
+  <node name="$(arg robot)_uav_path" pkg="url_uavugv" type="circle_uav.py" output="screen">
+    <param name="robot" type="str" value="$(arg robot)" />
     <param name="radius" type="double" value="2.0" />
     <param name="angular_speed" type="double" value="1" />
     <param name="target_altitude" type="double" value="5.0" />

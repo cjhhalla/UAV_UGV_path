@@ -78,6 +78,8 @@ class Jackal:
     #     euler = transformations.euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
     #     self.yaw = euler[2]
 
+
+
     def pose_callback(self, msg):
         #index = msg.name.index(self.model_name)
         #pose_ = msg.pose[index]

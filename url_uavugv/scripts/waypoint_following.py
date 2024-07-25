@@ -132,10 +132,8 @@ class px4():
                 target_yaw = target_yaw + math.pi * 2
             if (target_yaw - self.yaw) > math.pi:
                 target_yaw = target_yaw - math.pi * 2
-            self.vel.twist.angular.z = ((target_yaw - self.yaw))
+            self.vel.twist.angular.z = (0.5* (target_yaw - self.yaw))
 
-        # if np.abs(self.yaw - target_yaw) < 0.1:
-        #     self.vel.twist.angular.z = target_yaw
         self.local_vel_pub.publish(self.vel)
 
     def clip_velocity(self, velocity, max_speed= 1):

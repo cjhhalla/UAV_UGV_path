@@ -1,52 +1,36 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(url_uavugv)
 
+add_compile_options(-std=c++17)
+
 find_package(catkin REQUIRED COMPONENTS
-  rospy
+  roscpp
   geometry_msgs
   nav_msgs
   mavros_msgs
   std_msgs
   geographic_msgs
+  visualization_msgs
 )
 
 catkin_package()
 
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
-catkin_install_python(PROGRAMS
-  scripts/circle_uav.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+add_executable(rect_ugv src/ugv.cpp src/rect_ugv.cpp)
+target_link_libraries(rect_ugv ${catkin_LIBRARIES})
 
-catkin_install_python(PROGRAMS
-  scripts/rect_uav.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+add_executable(circle_ugv src/ugv.cpp src/circle_ugv.cpp)
+target_link_libraries(circle_ugv ${catkin_LIBRARIES})
 
-catkin_install_python(PROGRAMS
-  scripts/figure8_uav.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+add_executable(figure8_ugv src/ugv.cpp src/figure8_ugv.cpp)
+target_link_libraries(figure8_ugv ${catkin_LIBRARIES})
 
-catkin_install_python(PROGRAMS
-  scripts/circle_ugv.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+add_executable(fail_safe src/fail_safe_sub.cpp)
+target_link_libraries(fail_safe ${catkin_LIBRARIES})
 
-catkin_install_python(PROGRAMS
-  scripts/rect_ugv.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-catkin_install_python(PROGRAMS
-  scripts/figure8_ugv.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-catkin_install_python(PROGRAMS
-  scripts/waypoint_following.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+add_executable(visual src/visualization.cpp)
+target_link_libraries(visual ${catkin_LIBRARIES})
