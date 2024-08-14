@@ -4,40 +4,79 @@
 #include <cmath>
 #include <string>
 
-UGV::UGV(ros::NodeHandle& nh) {
-    nh.param("length", length, 3.0);
-    nh.param("center_x", center_x, 0.0);
-    nh.param("center_y", center_y, 0.0);
-    nh.param("center1_x", center1_x, 0.0);
-    nh.param("center2_x", center2_x, 0.0);
-    nh.param("radius", radius, 3.0);    
-    nh.param("max_speed", max_speed, 2.0);
-    nh.param("laps_completed", laps_completed, 1);
-    nh.param("use_gps", use_gps, false);
-    nh.param("robot", robot_id, std::string(""));
-    nh.param("look_ahead", look_ahead, 1.2);
-    nh.param("cmd_vel",cmd_vel, std::string("/cmd_vel"));
-    nh.param("is_sim",is_sim, false);
-    ROS_INFO("robot_id: %s", robot_id.c_str());
-    ROS_INFO("length: %f", length);
-    ROS_INFO("max_speed: %f", max_speed);
-    ROS_INFO("laps_completed: %d", laps_completed);
-    ROS_INFO("use_gps: %s", use_gps ? "true" : "false");
-    ROS_INFO("look_ahead_distance: %f", look_ahead);
-    ROS_INFO("cmd_vel: %s", cmd_vel.c_str());
+UGV::UGV(ros::NodeHandle* nh) : nh_(*nh) {
 
-    cmd_vel_pub = nh.advertise<geometry_msgs::Twist>(robot_id + cmd_vel + "/temp", 10);
-    pose_pub = nh.advertise<geometry_msgs::PoseStamped>(robot_id + "/posestamped", 10);
+    /////////////////////////////////////
+    // nh_.getParam("length", length);
+    // nh_.getParam("center_x", center_x);
+    // nh_.getParam("center_y", center_y);
+    // nh_.getParam("center1_x", center1_x);
+    // nh_.getParam("center2_x", center2_x);
+    // nh_.getParam("radius", radius);    
+    // nh_.getParam("max_speed", max_speed);
+    // nh_.getParam("laps_completed", laps_completed);
+    // nh_.getParam("use_gps", use_gps);
+    // nh_.getParam("robot", robot_id);
+    // nh_.getParam("look_ahead", look_ahead);
+    // nh_.getParam("cmd_vel",cmd_vel);
+    // nh_.getParam("is_sim",is_sim);
+    // nh_.getParam("cw_ccw",cw_ccw);
+    ////////////////////////////////////
+    // nh_.setParam("length", length);
+    // nh_.setParam("center_x", center_x);
+    // nh_.setParam("center_y", center_y);
+    // nh_.setParam("center1_x", center1_x);
+    // nh_.setParam("center2_x", center2_x);
+    // nh_.setParam("radius", radius);    
+    // nh_.setParam("max_speed", max_speed);
+    // nh_.setParam("laps_completed", laps_completed);
+    // nh_.setParam("use_gps", use_gps);
+    // nh_.setParam("robot", robot_id);
+    // nh_.setParam("look_ahead", look_ahead);
+    // nh_.setParam("cmd_vel",cmd_vel);
+    // nh_.setParam("is_sim",is_sim);
+    // nh_.setParam("cw_ccw",cw_ccw);
+    /////////////////////////////////////
+    // nh_.param("length", length, 3.0);
+    // nh_.param("center_x", center_x, 0.0);
+    // nh_.param("center_y", center_y, 0.0);
+    // nh_.param("center1_x", center1_x, 0.0);
+    // nh_.param("center2_x", center2_x, 0.0);
+    // nh_.param("radius", radius, 3.0);    
+    // nh_.param("max_speed", max_speed, 2.0);
+    // nh_.param("laps_completed", laps_completed, 1);
+    // nh_.param("use_gps", use_gps, false);
+    // nh_.param<std::string>("robot", robot_id, std::string(""));
+    // nh_.param("look_ahead", look_ahead, 1.2);
+    // nh_.param("cmd_vel",cmd_vel, std::string("/cmd_vel"));
+    // nh_.param("is_sim",is_sim, false);
+    // nh_.param("cw_ccw",cw_ccw,false);
+    // ///////////////////////////////////////
+    // ROS_INFO("##############################");
+    // ROS_INFO("UGV Class Parameter");
+    // ROS_INFO("robot_id: %s", robot_id.c_str());
+    // ROS_INFO("length: %f", length);
+    // ROS_INFO("max_speed: %f", max_speed);
+    // ROS_INFO("laps_completed: %d", laps_completed);
+    // ROS_INFO("use_gps: %s", use_gps ? "true" : "false");
+    // ROS_INFO("is_sim: %s", is_sim ? "true" : "false");
+    // ROS_INFO("look_ahead_distance: %f", look_ahead);
+    // ROS_INFO("cmd_vel: %s", cmd_vel.c_str());
+    // ROS_INFO("##############################");
+    loadParameters();
+
+    cmd_vel_pub = nh_.advertise<geometry_msgs::Twist>("/" + robot_id + cmd_vel + "/temp", 10);
+    pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("/"+robot_id+"/posestamped", 10);
     if(is_sim){
-        pose_sub = nh.subscribe("/gazebo/model_states", 10, &UGV::poseCallback_sim, this);
+        pose_sub = nh_.subscribe("/gazebo/model_states", 10, &UGV::poseCallback_sim, this);
     }
     else if (!use_gps) {
-        pose_sub = nh.subscribe(robot_id + "/mavros/local_position/odom", 10, &UGV::poseCallback, this);
+        pose_sub = nh_.subscribe(robot_id + "/mavros/local_position/odom", 10, &UGV::poseCallback, this);
     } else {
-        position_sub = nh.subscribe(robot_id + "/mavros/global_position/local", 10, &UGV::poseCallback, this);
+        position_sub = nh_.subscribe(robot_id + "/mavros/global_position/local", 10, &UGV::poseCallback, this);
     }
 
-    kp = 1.0;
+    kp = 1;
     kd = 0.1;
     prev_error = 0.0;
     L = 0.5;
@@ -47,7 +86,7 @@ UGV::UGV(ros::NodeHandle& nh) {
     init_x = 0.0;
     init_y = 0.0;
     fail_safe = true;
-    model_name = "jackal";
+    model_name = model_name_;
 }
 
 // void UGV::flagCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -109,7 +148,7 @@ void UGV::poseCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     pose_stamped.header.stamp = ros::Time::now();
     pose_stamped.header.frame_id = "world";
     pose_stamped.pose = pose.pose.pose;
-    pose_pub.publish(pose);
+    pose_pub.publish(pose_stamped);
 }
 
 double UGV::moveX(const geometry_msgs::PoseStamped& goal) {
@@ -129,7 +168,7 @@ void UGV::purePursuitControl(const geometry_msgs::PoseStamped& goal, double look
     std::pair<double, double> look_ahead_point = calculateLookAheadPoint(current_position, {goal_.x, goal_.y}, look_ahead_distance);
 
     if (look_ahead_point.first == -1) {
-        ROS_WARN("No lookahead point found!");
+        // ROS_WARN("No lookahead point found!");
         return;
     }
 
@@ -172,4 +211,36 @@ std::pair<double, double> UGV::rotateGoal(double goal_x, double goal_y) {
     double rotated_x = goalx * cos_yaw - goaly * sin_yaw + init_x;
     double rotated_y = goalx * sin_yaw + goaly * cos_yaw + init_y;
     return {rotated_x, rotated_y};
+}
+
+void UGV::loadParameters()
+{
+    nh_.param<std::string>("robot", robot_id, "");
+    nh_.param<double>("length", length, 0.0);
+    nh_.param<double>("center_x", center_x, 0.0);
+    nh_.param<double>("center_y", center_y, 0.0);
+    nh_.param<double>("center1_x", center1_x, 0.0);
+    nh_.param<double>("center2_x", center2_x, 0.0);
+    nh_.param<double>("radius", radius, 0.0);      
+    nh_.param<double>("max_speed", max_speed, 0.0);
+    nh_.param<double>("look_ahead", look_ahead, 0.0);
+    nh_.param<int>("laps_completed", laps_completed, 0);
+    nh_.param<bool>("cw_ccw", cw_ccw, true);
+    nh_.param<bool>("use_gps", use_gps, false);
+    nh_.param<bool>("is_sim", is_sim, true);
+    nh_.param<std::string>("cmd_vel", cmd_vel, "");
+    nh_.param<std::string>("model_name", model_name_,"");
+    ROS_INFO("robot: %s", robot_id.c_str());
+    ROS_INFO("length: %f", length);
+    ROS_INFO("max_speed: %f", max_speed);
+    ROS_INFO("center_x: %f", center_x);
+    ROS_INFO("center_y: %f", center_y);
+    ROS_INFO("center1_x: %f", center1_x);
+    ROS_INFO("center2_x: %f", center2_x);
+    ROS_INFO("look_ahead: %f", look_ahead);
+    ROS_INFO("laps_completed: %d", laps_completed);
+    ROS_INFO("cw_ccw: %s", cw_ccw ? "true" : "false");
+    ROS_INFO("use_gps: %s", use_gps ? "true" : "false");
+    ROS_INFO("is_sim: %s", is_sim ? "true" : "false");
+    ROS_INFO("cmd_vel: %s", cmd_vel.c_str());
 }

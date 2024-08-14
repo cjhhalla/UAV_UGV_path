@@ -9,9 +9,10 @@ double dist(const geometry_msgs::PoseStamped& goal, const nav_msgs::Odometry& od
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "robot_controller");
+    ros::init(argc, argv, "path_node");
     ros::NodeHandle nh("~");
-    UGV UGV(nh);
+    UGV UGV(&nh);
+    ros::Publisher waypoint_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+UGV.robot_id+"/waypoints", 1);
     geometry_msgs::PoseStamped goal;
     while (!UGV.initial_pose && ros::ok()) {
         ros::spinOnce();
@@ -27,16 +28,31 @@ int main(int argc, char** argv) {
     double radius = UGV.radius;
     int num_waypoint = 36;
     std::vector<std::pair<double, double>> wp;
-    for (int i=0; i<num_waypoint; i++){
-        std::pair<double, double> wp_ = {center1_x + radius * std::cos(M_PI+ 2*M_PI*i/num_waypoint),
-                                    center1_y + radius * std::sin(M_PI+ 2*M_PI*i/num_waypoint)};
-        wp.push_back(wp_);
-    }
+    if(!UGV.cw_ccw){
+        for (int i=0; i<num_waypoint; i++){
+            std::pair<double, double> wp_ = {center1_x + radius * std::cos(M_PI+ 2*M_PI*i/num_waypoint),
+                                        center1_y + radius * std::sin(M_PI+ 2*M_PI*i/num_waypoint)};
+            wp.push_back(wp_);
+        }
 
-    for (int i=0; i<num_waypoint; i++){
-        std::pair<double, double> wp_ = {center2_x + radius * std::cos(-2*M_PI*i/num_waypoint),
-                                    center2_y + radius * std::sin(-2*M_PI*i/num_waypoint)};
-        wp.push_back(wp_);
+        for (int i=0; i<num_waypoint; i++){
+            std::pair<double, double> wp_ = {center2_x + radius * std::cos(-2*M_PI*i/num_waypoint),
+                                        center2_y + radius * std::sin(-2*M_PI*i/num_waypoint)};
+            wp.push_back(wp_);
+        }
+    }
+    else{
+        for (int i=0; i<num_waypoint; i++){
+            std::pair<double, double> wp_ = {center1_x + radius * std::cos(M_PI- 2*M_PI*i/num_waypoint),
+                                        center1_y + radius * std::sin(M_PI- 2*M_PI*i/num_waypoint)};
+            wp.push_back(wp_);
+        }
+
+        for (int i=0; i<num_waypoint; i++){
+            std::pair<double, double> wp_ = {center2_x + radius * std::cos(2*M_PI*i/num_waypoint),
+                                        center2_y + radius * std::sin(2*M_PI*i/num_waypoint)};
+            wp.push_back(wp_);
+        }
     }
     
     std::vector<std::pair<double, double>> waypoints;
@@ -66,17 +82,19 @@ int main(int argc, char** argv) {
                 if (laps_completed >= UGV.laps_completed) {
                     goal.pose.position.x = UGV.init_x;
                     goal.pose.position.y = UGV.init_y;
-                    for (int i = 0; i < 150; ++i) {
-                        UGV.purePursuitControl(goal, look_ahead_distance);
-                        rate.sleep();
-                    }
+                    // for (int i = 0; i < 150; ++i) {
+                    //     UGV.purePursuitControl(goal, look_ahead_distance);
+                    //     rate.sleep();
+                    // }
                     if (dist(goal, UGV.pose) <= look_ahead_distance) {
                         ROS_INFO("Completed laps. Stopping.");
+                        UGV.stop();
                         return 0;
                         break;
                     }
                 }
             }
+            waypoint_pub.publish(goal);
             UGV.purePursuitControl(goal, look_ahead_distance);
             rate.sleep();
             ros::spinOnce();

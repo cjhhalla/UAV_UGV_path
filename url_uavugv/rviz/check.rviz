@@ -6,6 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Path1
+        - /Marker1
+        - /Marker2
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz/Selection
@@ -72,12 +75,97 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /visualization/path
+      Topic: /UGV2/path
       Unreliable: false
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /fail/visualization_marker
+      Marker Topic: /UGV2/visualization_marker
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        UGV2:
+          Value: true
+        UGV2/base_link:
+          Value: true
+        UGV2/chassis_link:
+          Value: true
+        UGV2/fenders_link:
+          Value: true
+        UGV2/front_left_wheel_link:
+          Value: true
+        UGV2/front_mount:
+          Value: true
+        UGV2/front_right_wheel_link:
+          Value: true
+        UGV2/imu_link:
+          Value: true
+        UGV2/mid_mount:
+          Value: true
+        UGV2/navsat_link:
+          Value: true
+        UGV2/odom:
+          Value: true
+        UGV2/rear_left_wheel_link:
+          Value: true
+        UGV2/rear_mount:
+          Value: true
+        UGV2/rear_right_wheel_link:
+          Value: true
+        map:
+          Value: true
+        odom:
+          Value: false
+        world:
+          Value: false
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: false
+      Show Axes: true
+      Show Names: true
+      Tree:
+        map:
+          UGV2/odom:
+            UGV2/base_link:
+              UGV2/chassis_link:
+                UGV2/fenders_link:
+                  {}
+                UGV2/front_left_wheel_link:
+                  {}
+                UGV2/front_right_wheel_link:
+                  {}
+                UGV2/imu_link:
+                  {}
+                UGV2/mid_mount:
+                  UGV2/front_mount:
+                    {}
+                  UGV2/rear_mount:
+                    {}
+                UGV2/navsat_link:
+                  {}
+                UGV2/rear_left_wheel_link:
+                  {}
+                UGV2/rear_right_wheel_link:
+                  {}
+        world:
+          UGV2:
+            {}
+          odom:
+            {}
+      Update Interval: 0
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /UGV2/waypoints_marker
       Name: Marker
       Namespaces:
         "": true
@@ -111,25 +199,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 29.338464736938477
+      Distance: 15.284514427185059
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.8982799053192139
-        Y: 0.6750437617301941
-        Z: 2.519155740737915
+        X: 1.0102050304412842
+        Y: -1.722360372543335
+        Z: 2.5876712799072266
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9353982210159302
+      Pitch: 1.2803980112075806
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.9954010248184204
+      Yaw: 2.0822293758392334
     Saved: ~
 Window Geometry:
   Displays:
@@ -148,4 +236,4 @@ Window Geometry:
     collapsed: false
   Width: 1267
   X: 67
-  Y: 30
+  Y: 27

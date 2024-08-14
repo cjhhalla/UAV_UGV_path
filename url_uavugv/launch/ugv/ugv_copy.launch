@@ -3,20 +3,19 @@
   <arg name="use_gps" default="False"/>
   <arg name="is_sim" default="True"/>
   <arg name="cmd_vel" default="/jackal_velocity_controller/cmd_vel"/>
-  <arg name="cw_ccw" default="False"/>
+  <arg name="cw_ccw" default="false"/>
   <group ns="$(arg robot)">
-    <node name="path_node" pkg="url_uavugv" type="circle_ugv" output="screen">
+    <node name="path_node" pkg="url_uavugv" type="rect_ugv" output="screen">
       <param name="robot" type="str" value="$(arg robot)"/>
-      <param name="radius" type="double" value="5.0"/>
-      <param name="center_x" type="double" value="0.0"/>
-      <param name="center_y" type="double" value="0.0"/>
+      <param name="length" type="double" value="5.0"/> <!--Rectangle path length-->
       <param name="max_speed" type="double" value="0.5"/>
-      <param name="look_ahead" type="double" value="1.2"/>
+      <param name="look_ahead" type="double" value="0.4"/>
       <param name="laps_completed" type="int" value="10"/>
       <param name="cw_ccw" type="bool" value="$(arg cw_ccw)"/> <!--false ccw / true cw-->
       <param name="use_gps" type="bool" value="$(arg use_gps)"/>
       <param name="is_sim" type="bool" value="$(arg is_sim)"/>
       <param name="cmd_vel" type="str" value="$(arg cmd_vel)"/>
+      <param name="model_name" type="str" value="$(arg robot)"/>
     </node>
   <node name="visualization_node" pkg="url_uavugv" type="visual" output="screen">
     <param name="robot" type="str" value="$(arg robot)"/>
@@ -30,7 +29,7 @@
     <param name="is_sim" type="bool" value="$(arg is_sim)"/>
     <param name="cmd_vel" type="str" value="$(arg cmd_vel)"/>
   </node>
-  <node name="rviz_$(arg robot)" pkg="rviz" type="rviz" args="-d $(find url_uavugv)/rviz/check.rviz" output="screen" />
+  <!-- <node name="rviz_$(arg robot)" pkg="rviz" type="rviz" args="-d $(find url_uavugv)/rviz/check.rviz" output="screen" /> -->
   <node pkg="tf" type="static_transform_publisher" name="world_broadcaster_$(arg robot)" args="0 0 0 0 0 0 1 world odom 10" />
   </group>
 </launch>

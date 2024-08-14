@@ -12,17 +12,13 @@ visualization_msgs::Marker marker;
 Failsafe::Failsafe(ros::NodeHandle& nh) {
     nh.param("use_gps", use_gps, false);
     nh.param("robot", robot_id, std::string(""));
-    nh.param("cmd_vel",cmd_vel, std::string("/cmd_vel"));
+    nh.param("cmd_vel",cmd_vel, std::string(""));
     nh.param("is_sim",is_sim, false);
-    // ROS_INFO("use_gps: %s", use_gps ? "true" : "false");
-    // ROS_INFO("cmd_vel: %s", cmd_vel.c_str());
-    // ROS_INFO("robot_id: %s", robot_id.c_str());
-    // ROS_INFO("is_sim: %s", is_sim ? "true" : "false");
-    vis_pub = nh.advertise<visualization_msgs::Marker>(robot_id + "visualization_marker", 10 );
-    cmd_vel_pub = nh.advertise<geometry_msgs::Twist>(robot_id + cmd_vel, 10);
-    flag_sub = nh.subscribe(robot_id + "/is_safe", 10, &Failsafe::flagCallback, this);
-    cmd_vel_sub = nh.subscribe(robot_id + cmd_vel + "/temp", 10, &Failsafe::cmdvelCallback, this);
-    pose_sub = nh.subscribe(robot_id + "/posestamped", 10, &Failsafe::poseCallback, this);
+    vis_pub = nh.advertise<visualization_msgs::Marker>("/"+robot_id + "/visualization_marker", 10 );
+    cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("/"+robot_id + cmd_vel, 10);
+    flag_sub = nh.subscribe("/"+robot_id + "/is_safe", 10, &Failsafe::flagCallback, this);
+    cmd_vel_sub = nh.subscribe("/" + robot_id + cmd_vel + "/temp", 10, &Failsafe::cmdvelCallback, this);
+    pose_sub = nh.subscribe("/"+robot_id + "/posestamped", 10, &Failsafe::poseCallback, this);
     fail_safe = true;
     init_ = true;
 }
@@ -62,12 +58,14 @@ void Failsafe::main(){
         cmd.angular.z = 0;
         cmd_vel_pub.publish(cmd);
         marker.header.stamp = ros::Time();
+        marker.id = 0; 
         marker.header.frame_id = "world";
         marker.type = visualization_msgs::Marker::SPHERE;
         marker.action = visualization_msgs::Marker::ADD;
         marker.pose.position.x = pose.pose.position.x;
         marker.pose.position.y = pose.pose.position.y;
         marker.pose.position.z = pose.pose.position.z;
+        marker.pose.orientation.w = 1.0;
         marker.scale.x = 0.5;
         marker.scale.y = 0.5;
         marker.scale.z = 0.5;
@@ -90,7 +88,7 @@ void Failsafe::main(){
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "fail_safe_detector");
+    ros::init(argc, argv, "failsafe_node");
     ros::NodeHandle nh("~");
     Failsafe fail(nh);
     ros::Rate rate(25);

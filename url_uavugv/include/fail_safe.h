@@ -32,7 +32,6 @@ public:
     // void stop();
     // std::pair<double, double> rotateGoal(double goal_x, double goal_y);
 
-
     ros::Publisher cmd_vel_pub;
     ros::Subscriber pose_sub, flag_sub, position_sub, cmd_vel_sub;
     double kp, kd, prev_error, length, max_speed, look_ahead;
